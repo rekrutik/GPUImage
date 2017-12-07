@@ -21,7 +21,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
 
 /**
  A GPUImageOutput that provides frames from either camera
-*/
+ */
 @interface GPUImageVideoCamera : GPUImageOutput <AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate>
 {
     NSUInteger numberOfFramesCaptured;
@@ -31,15 +31,15 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
     AVCaptureDevice *_inputCamera;
     AVCaptureDevice *_microphone;
     AVCaptureDeviceInput *videoInput;
-	AVCaptureVideoDataOutput *videoOutput;
-
+    AVCaptureVideoDataOutput *videoOutput;
+    
     BOOL capturePaused;
     GPUImageRotationMode outputRotation, internalRotation;
     dispatch_semaphore_t frameRenderingSemaphore;
-        
+    
     BOOL captureAsYUV;
     GLuint luminanceTexture, chrominanceTexture;
-
+    
     __unsafe_unretained id<GPUImageVideoCameraDelegate> _delegate;
 }
 
@@ -48,6 +48,10 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
 
 /// The AVCaptureSession used to capture from the camera
 @property(readonly, retain, nonatomic) AVCaptureSession *captureSession;
+
+@property(readwrite, retain, nonatomic) AVCaptureDeviceInput *audioInput;
+@property(readwrite, retain, nonatomic) AVCaptureAudioDataOutput *audioOutput;
+@property(readonly) dispatch_queue_t audioProcessingQueue;
 
 /// This enables the capture session preset to be changed on the fly
 @property (readwrite, nonatomic, copy) NSString *captureSessionPreset;
@@ -87,14 +91,18 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
  */
 - (id)initWithSessionPreset:(NSString *)sessionPreset cameraPosition:(AVCaptureDevicePosition)cameraPosition;
 
+-(void)justSetAudioEncodingTarget:(GPUImageMovieWriter*)newValue;
+
 /** Add audio capture to the session. Adding inputs and outputs freezes the capture session momentarily, so you
-    can use this method to add the audio inputs and outputs early, if you're going to set the audioEncodingTarget 
-    later. Returns YES is the audio inputs and outputs were added, or NO if they had already been added.
+ can use this method to add the audio inputs and outputs early, if you're going to set the audioEncodingTarget
+ later. Returns YES is the audio inputs and outputs were added, or NO if they had already been added.
  */
 - (BOOL)addAudioInputsAndOutputs;
 
+- (BOOL)addAudioOutput;
+
 /** Remove the audio capture inputs and outputs from this session. Returns YES if the audio inputs and outputs
-    were removed, or NO is they hadn't already been added.
+ were removed, or NO is they hadn't already been added.
  */
 - (BOOL)removeAudioInputsAndOutputs;
 
@@ -154,3 +162,4 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
 + (BOOL)isFrontFacingCameraPresent;
 
 @end
+
