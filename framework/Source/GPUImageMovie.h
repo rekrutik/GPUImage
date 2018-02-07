@@ -30,8 +30,12 @@
  */
 @property(readwrite, nonatomic) BOOL shouldRepeat;
 
+/** This determines whether to play the sound channel of a movie. Defaults to NO.
+ */
+@property (readwrite, nonatomic) BOOL playSound;
+
 /** This specifies the progress of the process on a scale from 0 to 1.0. A value of 0 means the process has not yet begun, A value of 1.0 means the conversaion is complete.
-    This property is not key-value observable.
+ This property is not key-value observable.
  */
 @property(readonly, nonatomic) float progress;
 
@@ -45,7 +49,6 @@
 
 /// @name Initialization and teardown
 - (id)initWithAsset:(AVAsset *)asset;
-- (id)initWithPlayerItem:(AVPlayerItem *)playerItem;
 - (id)initWithURL:(NSURL *)url;
 - (void)yuvConversionSetup;
 
@@ -56,6 +59,6 @@
 - (void)startProcessing;
 - (void)endProcessing;
 - (void)cancelProcessing;
-- (void)processMovieFrame:(CMSampleBufferRef)movieSampleBuffer; 
+- (void)processMovieFrame:(CMSampleBufferRef)movieSampleBuffer;
 
 @end
