@@ -61,5 +61,6 @@
 - (void)cancelProcessing;
 - (void)processMovieFrame:(CMSampleBufferRef)movieSampleBuffer;
 - (CGSize)getVideoSize;
+- (BOOL)getHasAudioTraks;
 
 @end

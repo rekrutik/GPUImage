@@ -292,6 +292,10 @@
     return CGSizeZero;
 }
 
+- (BOOL)getHasAudioTraks {
+    return hasAudioTraks;
+}
+
 - (void)processAsset
 {
     reader = [self createAssetReader];
