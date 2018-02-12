@@ -53,7 +53,11 @@ static OSStatus playbackCallback(void *inRefCon,
         int32_t requestedBytesSize = inNumberFrames * kUnitSize * numberOfChannels;
         
         int bytesToRead = MIN(availableBytes, requestedBytesSize);
-        memcpy(outSample, bufferTail, bytesToRead);
+        
+        if (p.playSound) {
+            memcpy(outSample, bufferTail, bytesToRead);
+        }
+        
         TPCircularBufferConsume([p getBuffer], bytesToRead);
         
         if (availableBytes <= requestedBytesSize*2){
@@ -80,6 +84,7 @@ static OSStatus playbackCallback(void *inRefCon,
         rescueBuffer = nil;
         rescueBufferSize = 0;
         _readyForMoreBytes = YES;
+        _playSound = YES;
     }
     
     return self;
@@ -185,8 +190,17 @@ static OSStatus playbackCallback(void *inRefCon,
 }
 
 - (void)stopPlaying {
-    // Start playing
+    // Stop playing
     AUGraphStop(processingGraph);
+    self.hasBuffer = NO;
+}
+
+- (void)startUnitPlaying {
+    _playSound = YES;
+}
+
+- (void)stopUnitPlaying {
+    _playSound = NO;
 }
 
 

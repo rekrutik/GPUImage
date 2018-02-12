@@ -27,7 +27,7 @@
     GLint yuvConversionMatrixUniform;
     const GLfloat *_preferredConversion;
     
-    BOOL isFullYUVRange, hasAudioTraks;
+    BOOL isFullYUVRange, hasAudioTraks, shouldAudioPlayerProccessing;
     
     int imageBufferWidth, imageBufferHeight;
     
@@ -139,6 +139,22 @@
             glEnableVertexAttribArray(yuvConversionTextureCoordinateAttribute);
         });
     }
+}
+
+- (void) setPlaySound:(BOOL)playSound {
+    if (playSound) {
+       [audioPlayer startUnitPlaying];
+    } else {
+        [audioPlayer stopUnitPlaying];
+    }
+    
+    if (hasAudioTraks && _playSound && !playSound) {
+        shouldAudioPlayerProccessing = YES;
+    } else {
+        shouldAudioPlayerProccessing = NO;
+    }
+    
+    _playSound = playSound;
 }
 
 - (void)dealloc
@@ -329,7 +345,7 @@
         {
             [weakSelf readNextVideoFrameFromOutput:readerVideoTrackOutput];
             
-            if (hasAudioTraks && self.playSound && (!audioEncodingIsFinished)){
+            if (hasAudioTraks && (self.playSound || shouldAudioPlayerProccessing) && (!audioEncodingIsFinished)){
                 
                 if (audioPlayer.readyForMoreBytes) {
                     //process next audio sample if the player is ready to receive it
@@ -520,16 +536,12 @@ static CVReturn renderCallback(CVDisplayLinkRef displayLink,
 
 - (BOOL)readNextAudioSampleFromOutput:(AVAssetReaderOutput *)readerAudioTrackOutput;
 {
-    if (audioEncodingIsFinished && !self.playSound) {
-        return NO;
-    }
-    
     if (reader.status == AVAssetReaderStatusReading && ! audioEncodingIsFinished)
     {
         CMSampleBufferRef audioSampleBufferRef = [readerAudioTrackOutput copyNextSampleBuffer];
         if (audioSampleBufferRef)
         {
-            if (self.playSound) {
+            if (self.playSound || shouldAudioPlayerProccessing) {
                 CFRetain(audioSampleBufferRef);
                 dispatch_async(audio_queue, ^{
                     [audioPlayer copyBuffer:audioSampleBufferRef];

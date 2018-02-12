@@ -18,10 +18,14 @@
 - (void)initAudio;
 - (void)startPlaying;
 - (void)stopPlaying;
+- (void)startUnitPlaying;
+- (void)stopUnitPlaying;
+
 - (void)copyBuffer:(CMSampleBufferRef)buf;
 
 - (TPCircularBuffer *)getBuffer;
 
+@property (readwrite, nonatomic) BOOL playSound;
 @property(nonatomic, assign) BOOL hasBuffer;
 @property(nonatomic, assign) SInt32 bufferSize;
 @property(nonatomic, readonly) BOOL readyForMoreBytes;
