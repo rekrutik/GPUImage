@@ -274,6 +274,7 @@
             
             if (audioPlayer == nil){
                 audioPlayer = [[GPUImageAudioPlayer alloc] init];
+                audioPlayer.playSound = _playerPlaySound;
                 [audioPlayer initAudio];
                 [audioPlayer startPlaying];
             }
