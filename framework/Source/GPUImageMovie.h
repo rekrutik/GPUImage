@@ -60,5 +60,6 @@
 - (void)endProcessing;
 - (void)cancelProcessing;
 - (void)processMovieFrame:(CMSampleBufferRef)movieSampleBuffer;
+- (CGSize)getVideoSize;
 
 @end

@@ -267,6 +267,15 @@
     return assetReader;
 }
 
+- (CGSize)getVideoSize
+{
+    if (self.asset) {
+        return self.asset.naturalSize;
+    }
+    
+    return CGSizeZero;
+}
+
 - (void)processAsset
 {
     reader = [self createAssetReader];
