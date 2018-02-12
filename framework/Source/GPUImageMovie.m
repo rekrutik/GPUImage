@@ -241,7 +241,7 @@
     
     NSArray *audioTracks = [self.asset tracksWithMediaType:AVMediaTypeAudio];
     hasAudioTraks = [audioTracks count] > 0;
-    BOOL shouldPlayAudio = hasAudioTraks && self.playSound;
+    BOOL shouldPlayAudio = hasAudioTraks && (self.playSound || shouldAudioPlayerProccessing);
     BOOL shouldRecordAudioTrack = (hasAudioTraks && (self.audioEncodingTarget != nil));
     AVAssetReaderTrackOutput *readerAudioTrackOutput = nil;
     
