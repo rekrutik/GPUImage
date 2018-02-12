@@ -141,14 +141,14 @@
     }
 }
 
-- (void) setPlaySound:(BOOL)playSound {
+- (void)setPlaySound:(BOOL)playSound {
     if (playSound) {
        [audioPlayer startUnitPlaying];
     } else {
         [audioPlayer stopUnitPlaying];
     }
     
-    if (hasAudioTraks && _playSound && !playSound) {
+    if (audioPlayer && _playSound && !playSound) {
         shouldAudioPlayerProccessing = YES;
     } else {
         shouldAudioPlayerProccessing = NO;
