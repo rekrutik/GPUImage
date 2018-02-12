@@ -329,7 +329,7 @@
         {
             [weakSelf readNextVideoFrameFromOutput:readerVideoTrackOutput];
             
-            if (hasAudioTraks && (!audioEncodingIsFinished)){
+            if (hasAudioTraks && self.playSound && (!audioEncodingIsFinished)){
                 
                 if (audioPlayer.readyForMoreBytes) {
                     //process next audio sample if the player is ready to receive it
@@ -520,6 +520,10 @@ static CVReturn renderCallback(CVDisplayLinkRef displayLink,
 
 - (BOOL)readNextAudioSampleFromOutput:(AVAssetReaderOutput *)readerAudioTrackOutput;
 {
+    if (audioEncodingIsFinished && !self.playSound) {
+        return NO;
+    }
+    
     if (reader.status == AVAssetReaderStatusReading && ! audioEncodingIsFinished)
     {
         CMSampleBufferRef audioSampleBufferRef = [readerAudioTrackOutput copyNextSampleBuffer];
