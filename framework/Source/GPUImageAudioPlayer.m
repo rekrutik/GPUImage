@@ -105,11 +105,6 @@ static OSStatus playbackCallback(void *inRefCon,
 #pragma mark audio player methods
 
 - (void)initAudio {
-    
-    AVAudioSession *session = [AVAudioSession sharedInstance];
-    [session setCategory:AVAudioSessionCategoryAmbient error:nil];
-    [session setActive:YES error:nil];
-    
 	// create a new AUGraph
 	NewAUGraph(&processingGraph);
     
