@@ -90,6 +90,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
  @param cameraPosition Camera to capture from
  */
 - (id)initWithSessionPreset:(NSString *)sessionPreset cameraPosition:(AVCaptureDevicePosition)cameraPosition;
+- (id)initWithFrameRate:(NSUInteger)rate desiredSize:(CGSize)size cameraPosition:(AVCaptureDevicePosition)cameraPosition;
 
 -(void)justSetAudioEncodingTarget:(GPUImageMovieWriter*)newValue;
 

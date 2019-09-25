@@ -118,6 +118,62 @@ void GPUImageCreateResizedSampleBuffer(CVPixelBufferRef cameraFrame, CGSize fina
     return self;
 }
 
+- (id)initWithFrameRate:(NSUInteger)rate desiredSize:(CGSize)size cameraPosition:(AVCaptureDevicePosition)cameraPosition;
+{
+    if (!(self = [super initWithFrameRate:rate desiredSize:size cameraPosition:cameraPosition]))
+    {
+        return nil;
+    }
+    
+    /* Detect iOS version < 6 which require a texture cache corruption workaround */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    requiresFrontCameraTextureCacheCorruptionWorkaround = [[[UIDevice currentDevice] systemVersion] compare:@"6.0" options:NSNumericSearch] == NSOrderedAscending;
+#pragma clang diagnostic pop
+    
+    [self.captureSession beginConfiguration];
+    
+    photoOutput = [[AVCaptureStillImageOutput alloc] init];
+   
+    // Having a still photo input set to BGRA and video to YUV doesn't work well, so since I don't have YUV resizing for iPhone 4 yet, kick back to BGRA for that device
+//    if (captureAsYUV && [GPUImageContext supportsFastTextureUpload])
+    if (captureAsYUV && [GPUImageContext deviceSupportsRedTextures])
+    {
+        BOOL supportsFullYUVRange = NO;
+        NSArray *supportedPixelFormats = photoOutput.availableImageDataCVPixelFormatTypes;
+        for (NSNumber *currentPixelFormat in supportedPixelFormats)
+        {
+            if ([currentPixelFormat intValue] == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
+            {
+                supportsFullYUVRange = YES;
+            }
+        }
+        
+        if (supportsFullYUVRange)
+        {
+            [photoOutput setOutputSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarFullRange] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+        }
+        else
+        {
+            [photoOutput setOutputSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+        }
+    }
+    else
+    {
+        captureAsYUV = NO;
+        [photoOutput setOutputSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+        [videoOutput setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+    }
+    
+    [self.captureSession addOutput:photoOutput];
+    
+    [self.captureSession commitConfiguration];
+    
+    self.jpegCompressionQuality = 0.8;
+    
+    return self;
+}
+
 - (id)init;
 {
     if (!(self = [self initWithSessionPreset:AVCaptureSessionPresetPhoto cameraPosition:AVCaptureDevicePositionBack]))
