@@ -73,6 +73,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     return self;
 }
 
+
 - (id)initWithSessionPreset:(NSString *)sessionPreset cameraPosition:(AVCaptureDevicePosition)cameraPosition;
 {
     if (!(self = [super init]))
@@ -231,6 +232,86 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     
     [_captureSession commitConfiguration];
     
+    return self;
+}
+
+- (id)initWithFrameRate:(NSUInteger)rate desiredSize:(CGSize)size cameraPosition:(AVCaptureDevicePosition)cameraPosition;
+{
+    if (!(self = [super init]))
+    {
+        return nil;
+    }
+    
+    cameraProcessingQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH,0);
+    _audioProcessingQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW,0);
+    
+    frameRenderingSemaphore = dispatch_semaphore_create(1);
+    
+    _frameRate = 0; // This will not set frame rate unless this value gets set to 1 or above
+    _runBenchmark = NO;
+    capturePaused = NO;
+    outputRotation = kGPUImageNoRotation;
+    internalRotation = kGPUImageNoRotation;
+    captureAsYUV = NO;
+    _preferredConversion = kColorConversion709;
+    _inputCamera = nil;
+    
+    _captureSession = [[AVCaptureSession alloc] init];
+    [_captureSession beginConfiguration];
+    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    for (AVCaptureDevice *device in devices)
+    {
+        if ([device position] == cameraPosition)
+        {
+            _inputCamera = device;
+        }
+    }
+    videoInput = [AVCaptureDeviceInput deviceInputWithDevice:_inputCamera error:NULL];
+    if (videoInput) [_captureSession addInput:videoInput];
+    
+    for (AVCaptureDeviceFormat *vFormat in [_inputCamera formats])
+    {
+        CMFormatDescriptionRef description = vFormat.formatDescription;
+        float minRate = ((AVFrameRateRange*)[vFormat.videoSupportedFrameRateRanges objectAtIndex:0]).minFrameRate;
+        float maxrate = ((AVFrameRateRange*)[vFormat.videoSupportedFrameRateRanges objectAtIndex:0]).maxFrameRate;
+        CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(description);
+        
+        if(
+           maxrate + 1e-4 >= rate &&
+           minRate - 1e-4 <= rate &&
+           CMFormatDescriptionGetMediaSubType(description) == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange &&
+           dimensions.width == size.width && dimensions.height == size.height)
+        {
+            if ([_inputCamera lockForConfiguration:NULL])
+            {
+                _inputCamera.activeFormat = vFormat;
+                [_inputCamera setActiveVideoMinFrameDuration:CMTimeMake(1,rate)];
+                [_inputCamera setActiveVideoMaxFrameDuration:CMTimeMake(1,rate)];
+                [_inputCamera unlockForConfiguration];
+                break;
+            }
+        }
+    }
+    
+    // Add the video frame output
+    videoOutput = [[AVCaptureVideoDataOutput alloc] init];
+    [videoOutput setAlwaysDiscardsLateVideoFrames: YES];
+    videoOutput.videoSettings = @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
+    
+    if (!_inputCamera) {
+        return nil;
+    }
+    [videoOutput setSampleBufferDelegate:self queue:cameraProcessingQueue];
+    if ([_captureSession canAddOutput:videoOutput])
+    {
+        [_captureSession addOutput:videoOutput];
+    }
+    else
+    {
+        NSLog(@"Couldn't add video output");
+        return nil;
+    }
+    [_captureSession commitConfiguration];
     return self;
 }
 
@@ -436,6 +517,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     }
     
     _inputCamera = backFacingCamera;
+    [self setFrameRate: _frameRate];
     [self setOutputImageOrientation:_outputImageOrientation];
 }
 
@@ -634,6 +716,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
 
 - (void)processVideoSampleBuffer:(CMSampleBufferRef)sampleBuffer;
 {
+    NSLog(@"Processing buffer");
     if (capturePaused)
     {
         return;
