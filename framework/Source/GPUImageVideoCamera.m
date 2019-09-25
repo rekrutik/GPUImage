@@ -248,7 +248,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     frameRenderingSemaphore = dispatch_semaphore_create(1);
     
     _frameRate = 0; // This will not set frame rate unless this value gets set to 1 or above
-    _runBenchmark = NO;
+    _runBenchmark = YES;
     capturePaused = NO;
     outputRotation = kGPUImageNoRotation;
     internalRotation = kGPUImageNoRotation;
