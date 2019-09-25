@@ -295,7 +295,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     
     // Add the video frame output
     videoOutput = [[AVCaptureVideoDataOutput alloc] init];
-    [videoOutput setAlwaysDiscardsLateVideoFrames: YES];
+    [videoOutput setAlwaysDiscardsLateVideoFrames: NO];
     videoOutput.videoSettings = @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
     
     if (!_inputCamera) {
