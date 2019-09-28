@@ -248,11 +248,11 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     frameRenderingSemaphore = dispatch_semaphore_create(1);
     
     _frameRate = 0; // This will not set frame rate unless this value gets set to 1 or above
-    _runBenchmark = YES;
+    _runBenchmark = NO;
     capturePaused = NO;
     outputRotation = kGPUImageNoRotation;
     internalRotation = kGPUImageNoRotation;
-    captureAsYUV = NO;
+    captureAsYUV = YES;
     _preferredConversion = kColorConversion709;
     _inputCamera = nil;
     
@@ -295,8 +295,92 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     
     // Add the video frame output
     videoOutput = [[AVCaptureVideoDataOutput alloc] init];
-    [videoOutput setAlwaysDiscardsLateVideoFrames: NO];
-    videoOutput.videoSettings = @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
+    [videoOutput setAlwaysDiscardsLateVideoFrames: YES];
+    
+    if (captureAsYUV && [GPUImageContext supportsFastTextureUpload])
+    {
+        BOOL supportsFullYUVRange = NO;
+        NSArray *supportedPixelFormats = videoOutput.availableVideoCVPixelFormatTypes;
+        for (NSNumber *currentPixelFormat in supportedPixelFormats)
+        {
+            if ([currentPixelFormat intValue] == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
+            {
+                supportsFullYUVRange = YES;
+            }
+        }
+        
+        if (supportsFullYUVRange)
+        {
+            [videoOutput setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarFullRange] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+            isFullYUVRange = YES;
+        }
+        else
+        {
+            [videoOutput setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+            isFullYUVRange = NO;
+        }
+    }
+    else
+    {
+        [videoOutput setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+    }
+    
+    
+    
+    
+    
+    runSynchronouslyOnVideoProcessingQueue(^{
+        
+        if (captureAsYUV)
+        {
+            [GPUImageContext useImageProcessingContext];
+            //            if ([GPUImageContext deviceSupportsRedTextures])
+            //            {
+            //                yuvConversionProgram = [[GPUImageContext sharedImageProcessingContext] programForVertexShaderString:kGPUImageVertexShaderString fragmentShaderString:kGPUImageYUVVideoRangeConversionForRGFragmentShaderString];
+            //            }
+            //            else
+            //            {
+            if (isFullYUVRange)
+            {
+                yuvConversionProgram = [[GPUImageContext sharedImageProcessingContext] programForVertexShaderString:kGPUImageVertexShaderString fragmentShaderString:kGPUImageYUVFullRangeConversionForLAFragmentShaderString];
+            }
+            else
+            {
+                yuvConversionProgram = [[GPUImageContext sharedImageProcessingContext] programForVertexShaderString:kGPUImageVertexShaderString fragmentShaderString:kGPUImageYUVVideoRangeConversionForLAFragmentShaderString];
+            }
+            
+            //            }
+            
+            if (!yuvConversionProgram.initialized)
+            {
+                [yuvConversionProgram addAttribute:@"position"];
+                [yuvConversionProgram addAttribute:@"inputTextureCoordinate"];
+                
+                if (![yuvConversionProgram link])
+                {
+                    NSString *progLog = [yuvConversionProgram programLog];
+                    NSLog(@"Program link log: %@", progLog);
+                    NSString *fragLog = [yuvConversionProgram fragmentShaderLog];
+                    NSLog(@"Fragment shader compile log: %@", fragLog);
+                    NSString *vertLog = [yuvConversionProgram vertexShaderLog];
+                    NSLog(@"Vertex shader compile log: %@", vertLog);
+                    yuvConversionProgram = nil;
+                    NSAssert(NO, @"Filter shader link failed");
+                }
+            }
+            
+            yuvConversionPositionAttribute = [yuvConversionProgram attributeIndex:@"position"];
+            yuvConversionTextureCoordinateAttribute = [yuvConversionProgram attributeIndex:@"inputTextureCoordinate"];
+            yuvConversionLuminanceTextureUniform = [yuvConversionProgram uniformIndex:@"luminanceTexture"];
+            yuvConversionChrominanceTextureUniform = [yuvConversionProgram uniformIndex:@"chrominanceTexture"];
+            yuvConversionMatrixUniform = [yuvConversionProgram uniformIndex:@"colorConversionMatrix"];
+            
+            [GPUImageContext setActiveShaderProgram:yuvConversionProgram];
+            
+            glEnableVertexAttribArray(yuvConversionPositionAttribute);
+            glEnableVertexAttribArray(yuvConversionTextureCoordinateAttribute);
+        }
+    });
     
     if (!_inputCamera) {
         return nil;
@@ -909,6 +993,8 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
             {
                 CFAbsoluteTime currentFrameTime = (CFAbsoluteTimeGetCurrent() - startTime);
                 totalFrameTimeDuringCapture += currentFrameTime;
+                NSLog(@"Average frame time : %f ms", [self averageFrameDurationDuringCapture]);
+                NSLog(@"Current frame time : %f ms", 1000.0 * currentFrameTime);
             }
         }
     }

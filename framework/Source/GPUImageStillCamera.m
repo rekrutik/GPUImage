@@ -78,9 +78,9 @@ void GPUImageCreateResizedSampleBuffer(CVPixelBufferRef cameraFrame, CGSize fina
     [self.captureSession beginConfiguration];
     
     photoOutput = [[AVCaptureStillImageOutput alloc] init];
-   
+    
     // Having a still photo input set to BGRA and video to YUV doesn't work well, so since I don't have YUV resizing for iPhone 4 yet, kick back to BGRA for that device
-//    if (captureAsYUV && [GPUImageContext supportsFastTextureUpload])
+    //    if (captureAsYUV && [GPUImageContext supportsFastTextureUpload])
     if (captureAsYUV && [GPUImageContext deviceSupportsRedTextures])
     {
         BOOL supportsFullYUVRange = NO;
@@ -113,7 +113,7 @@ void GPUImageCreateResizedSampleBuffer(CVPixelBufferRef cameraFrame, CGSize fina
     
     [self.captureSession commitConfiguration];
     
-    self.jpegCompressionQuality = 0.8;
+    self.jpegCompressionQuality = 0.92;
     
     return self;
 }
@@ -297,7 +297,7 @@ void GPUImageCreateResizedSampleBuffer(CVPixelBufferRef cameraFrame, CGSize fina
             dispatch_semaphore_signal(frameRenderingSemaphore);
         }
         
-        block(dataForPNGFile, error);        
+        block(dataForPNGFile, error);
     }];
     
     return;
@@ -337,11 +337,11 @@ void GPUImageCreateResizedSampleBuffer(CVPixelBufferRef cameraFrame, CGSize fina
 
     [photoOutput captureStillImageAsynchronouslyFromConnection:[[photoOutput connections] objectAtIndex:0] completionHandler:^(CMSampleBufferRef imageSampleBuffer, NSError *error) {
         dispatch_semaphore_wait(frameRenderingSemaphore, DISPATCH_TIME_FOREVER);
-	if(imageSampleBuffer == NULL){
+        if(imageSampleBuffer == NULL){
             block(error);
             return;
         }
-
+        
         // For now, resize photos to fix within the max texture size of the GPU
         CVImageBufferRef cameraFrame = CMSampleBufferGetImageBuffer(imageSampleBuffer);
         

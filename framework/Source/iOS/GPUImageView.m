@@ -16,6 +16,7 @@
     GLProgram *displayProgram;
     GLint displayPositionAttribute, displayTextureCoordinateAttribute;
     GLint displayInputTextureUniform;
+    CAEAGLLayer *_layer;
 
     CGSize inputImageSize;
     GLfloat imageVertices[8];
@@ -25,6 +26,7 @@
 }
 
 @property (assign, nonatomic) NSUInteger aspectRatio;
+@property (assign, atomic) CGRect threadSafeBounds;
 
 // Initialization and teardown
 - (void)commonInit;
@@ -91,6 +93,7 @@
     CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
     eaglLayer.opaque = YES;
     eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO], kEAGLDrawablePropertyRetainedBacking, kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat, nil];
+    _layer = eaglLayer;
 
     self.enabled = YES;
     
@@ -134,13 +137,13 @@
     [super layoutSubviews];
     
     // The frame buffer needs to be trashed and re-created when the view size changes.
-    if (!CGSizeEqualToSize(self.bounds.size, boundsSizeAtFrameBufferEpoch) &&
-        !CGSizeEqualToSize(self.bounds.size, CGSizeZero)) {
+    if (!CGSizeEqualToSize(self.threadSafeBounds.size, boundsSizeAtFrameBufferEpoch) &&
+        !CGSizeEqualToSize(self.threadSafeBounds.size, CGSizeZero)) {
         runSynchronouslyOnVideoProcessingQueue(^{
             [self destroyDisplayFramebuffer];
             [self createDisplayFramebuffer];
         });
-    } else if (!CGSizeEqualToSize(self.bounds.size, CGSizeZero)) {
+    } else if (!CGSizeEqualToSize(self.threadSafeBounds.size, CGSizeZero)) {
         [self recalculateViewGeometry];
     }
 }
@@ -165,7 +168,7 @@
     glGenRenderbuffers(1, &displayRenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, displayRenderbuffer);
 	
-    [[[GPUImageContext sharedImageProcessingContext] context] renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer*)self.layer];
+    [[[GPUImageContext sharedImageProcessingContext] context] renderbufferStorage:GL_RENDERBUFFER fromDrawable: _layer];
 	
     GLint backingWidth, backingHeight;
 
@@ -186,8 +189,8 @@
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, displayRenderbuffer);
 	
     __unused GLuint framebufferCreationStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    NSAssert(framebufferCreationStatus == GL_FRAMEBUFFER_COMPLETE, @"Failure with display framebuffer generation for display of size: %f, %f", self.bounds.size.width, self.bounds.size.height);
-    boundsSizeAtFrameBufferEpoch = self.bounds.size;
+    NSAssert(framebufferCreationStatus == GL_FRAMEBUFFER_COMPLETE, @"Failure with display framebuffer generation for display of size: %f, %f", self.threadSafeBounds.size.width, self.threadSafeBounds.size.height);
+    boundsSizeAtFrameBufferEpoch = self.threadSafeBounds.size;
 
     [self recalculateViewGeometry];
 }
@@ -235,12 +238,12 @@
     runSynchronouslyOnVideoProcessingQueue(^{
         CGFloat heightScaling, widthScaling;
         
-        CGSize currentViewSize = self.bounds.size;
+        CGSize currentViewSize = self.threadSafeBounds.size;
         
         //    CGFloat imageAspectRatio = inputImageSize.width / inputImageSize.height;
         //    CGFloat viewAspectRatio = currentViewSize.width / currentViewSize.height;
         
-        CGRect insetRect = AVMakeRectWithAspectRatioInsideRect(inputImageSize, self.bounds);
+        CGRect insetRect = AVMakeRectWithAspectRatioInsideRect(inputImageSize, self.threadSafeBounds);
         
         switch(_fillMode)
         {
@@ -432,13 +435,19 @@
 {
     if ([self respondsToSelector:@selector(setContentScaleFactor:)])
     {
-        CGSize pointSize = self.bounds.size;
+        CGSize pointSize = self.threadSafeBounds.size;
         return CGSizeMake(self.contentScaleFactor * pointSize.width, self.contentScaleFactor * pointSize.height);
     }
     else
     {
-        return self.bounds.size;
+        return self.threadSafeBounds.size;
     }
+}
+
+- (void)setBounds:(CGRect)bounds;
+{
+    [super setBounds:bounds];
+    self.threadSafeBounds = bounds;
 }
 
 - (void)endProcessing
