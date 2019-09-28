@@ -800,7 +800,6 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
 
 - (void)processVideoSampleBuffer:(CMSampleBufferRef)sampleBuffer;
 {
-    NSLog(@"Processing buffer");
     if (capturePaused)
     {
         return;
