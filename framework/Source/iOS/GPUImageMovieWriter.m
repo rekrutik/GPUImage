@@ -791,7 +791,7 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
                 NSDate *maxDate = [NSDate dateWithTimeIntervalSinceNow:0.1];
                 //            NSLog(@"video waiting...");
                 [[NSRunLoop currentRunLoop] runUntilDate:maxDate];
-                NSLog(@"komnata ojidaniya %@", @frameTime);
+                NSLog(@"komnata ojidaniya %f", CMTimeGetSeconds(frameTime));
             }
             if (!assetWriterVideoInput.readyForMoreMediaData)
             {
