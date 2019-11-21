@@ -750,7 +750,7 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
     GPUImageFramebuffer *inputFramebufferForBlock = firstInputFramebuffer;
     glFinish();
 
-    runAsynchronouslyOnContextQueue(_movieWriterContext, ^{
+    runSynchronouslyOnContextQueue(_movieWriterContext, ^{
         if (!assetWriterVideoInput.readyForMoreMediaData && _encodingLiveVideo)
         {
             [inputFramebufferForBlock unlock];
