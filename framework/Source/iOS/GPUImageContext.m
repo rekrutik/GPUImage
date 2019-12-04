@@ -44,6 +44,10 @@ static void *openGLESContextQueueKey;
     return self;
 }
 
+- (void) dealloc {
+    if (_coreVideoTextureCache) CFRelease(_coreVideoTextureCache);
+}
+
 + (void *)contextKey {
 	return openGLESContextQueueKey;
 }
