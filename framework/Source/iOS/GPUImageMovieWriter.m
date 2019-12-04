@@ -774,6 +774,11 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
             // Render the frame with swizzled colors, so that they can be uploaded quickly as BGRA frames
             [_movieWriterContext useAsCurrentContext];
             CVReturn status = CVPixelBufferPoolCreatePixelBuffer (NULL, [assetWriterPixelBufferInput pixelBufferPool], &pixel_buffer);
+            if ((pixel_buffer == NULL) || (status != kCVReturnSuccess))
+            {
+                CVPixelBufferRelease(pixel_buffer);
+                return;
+            }
             [self renderOntoPixelBuffer: pixel_buffer withFramebuffer: inputFramebufferForBlock];
         }
         else
@@ -817,7 +822,10 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
                 NSLog(@"Couldn't write a frame");
                 //NSLog(@"Wrote a video frame: %@", CFBridgingRelease(CMTimeCopyDescription(kCFAllocatorDefault, frameTime)));
             }
-            CVPixelBufferUnlockBaseAddress(pixel_buffer, 0);
+            
+            if (![GPUImageContext supportsFastTextureUpload]) {
+                CVPixelBufferUnlockBaseAddress(pixel_buffer, 0);
+            }
             
             previousFrameTime = frameTime;
             
@@ -834,10 +842,11 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
     if (movieFramebuffer == 0) {
         glActiveTexture(GL_TEXTURE1);
         glGenFramebuffers(1, &movieFramebuffer);
-        CVBufferSetAttachment(pixelBuffer, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
-        CVBufferSetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_601_4, kCVAttachmentMode_ShouldPropagate);
-        CVBufferSetAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
     }
+    
+    CVBufferSetAttachment(pixelBuffer, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
+    CVBufferSetAttachment(pixelBuffer, kCVImageBufferYCbCrMatrixKey, kCVImageBufferYCbCrMatrix_ITU_R_601_4, kCVAttachmentMode_ShouldPropagate);
+    CVBufferSetAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_709_2, kCVAttachmentMode_ShouldPropagate);
     
     CVOpenGLESTextureRef textureRef = NULL;
     CVOpenGLESTextureCacheCreateTextureFromImage (kCFAllocatorDefault, [_movieWriterContext coreVideoTextureCache], pixelBuffer,
@@ -858,7 +867,6 @@ NSString *const kGPUImageColorSwizzlingFragmentShaderString = SHADER_STRING
     glBindFramebuffer(GL_FRAMEBUFFER, movieFramebuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, CVOpenGLESTextureGetName(textureRef), 0);
     
-    CVPixelBufferLockBaseAddress(pixelBuffer, 0);
     glViewport(0, 0, (int)videoSize.width, (int)videoSize.height);
     
     [_movieWriterContext setContextShaderProgram:colorSwizzlingProgram];
